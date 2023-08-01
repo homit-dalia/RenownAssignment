@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity } from 'react-native';
 import ImagePicker from 'react-native-image-crop-picker';
-import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
+import { FFmpegKit, ReturnCode, FFprobeKit } from 'ffmpeg-kit-react-native';
 
 var RNFS = require("react-native-fs");
 
@@ -36,16 +36,18 @@ const ListVideos = ({ navigation }) => {
   const [inputFilePath, setInputFilePath] = useState("");
   const [outputFilePath, setOutputFilePath] = useState("");
   const [data, setData] = useState([]);
+  const [name, setName] = useState("");
+  const [compressed_video_uri, setCompressedVideoUri] = useState("");
 
   useEffect(() => { // use effect hook to compress video. setOutputFilePath is not instantenoues, so we need to wait for it to be set before compressing video
-    if (outputFilePath != "") { // if output file path is not empty, compress video
+    if (compressed_video_uri != "") { // if output file path is not empty, compress video
       compressVideo()
     }
-  }, [outputFilePath]);
+  }, [compressed_video_uri]);
 
   const addNewVideo = (name, uri) => {
     const newId = (data.length + 1).toString();
-    setData([...data, { id: newId, title: `${name}`, uri: uri }]);
+    setData([...data, { id: newId, title: name, uri: uri }]);
   };
 
   const selectVideo = () => {
@@ -56,28 +58,52 @@ const ListVideos = ({ navigation }) => {
       console.log(videoAsset)
       console.log(`Selected video ${JSON.stringify(videoAsset, null, 2)}`);
 
-      name = getFileNameFromPath(videoAsset.path)
+
       path = videoAsset.path
-      addNewVideo(name, path)
+      //addNewVideo(name, path)
 
       setInputFilePath(videoAsset.path)
 
-      name = name + "_compressed"
+      setName(getFileNameFromPath(videoAsset.path) + "_compressed")
+      output_path = `${RNFS.CachesDirectoryPath}/${name}__.mp4`
 
-      setOutputFilePath(`${RNFS.CachesDirectoryPath}/______${name}.mp4`)
-      addNewVideo(name, path)
+      // output_path = require(output_path)
 
+      console.log("Printing Input path")
+      console.log(path)
+      console.log("Printing output path")
+      console.log(output_path)
+
+      setOutputFilePath(output_path)
+
+      setCompressedVideoUri(`file://${output_path}`)
+
+      console.log("Name")
+      console.log(name)
+      console.log("Printing compressed video uri")
+      console.log(compressed_video_uri)
+
+
+      console.log("###################################################")
     });
   };
 
   async function compressVideo() {
     try {
       FFmpegKit.execute(`-i ${inputFilePath} -c:v mpeg4 ${outputFilePath}`).then(async (session) => {
+
         const returnCode = await session.getReturnCode();
+
+        const statistics = await session.getStatistics();
+        console.log("Statistics")
+        console.log(statistics)
 
         if (ReturnCode.isSuccess(returnCode)) {
           console.log("Successfully compressed video")
           console.log(session)
+
+          addNewVideo(name, compressed_video_uri)
+
           // SUCCESS
 
         } else if (ReturnCode.isCancel(returnCode)) {
@@ -124,18 +150,13 @@ const ListVideos = ({ navigation }) => {
   return (
     <View style={styles.container}>
 
-      {data.length == 0 ? <Text style={{ margin: '20px' }}>No videos found </Text> :
-
+      {data.length == 0 ? <Text style={{ margin: '20px' }}> No videos found </Text> :
         <FlatList
-          onPress={() => navigation.navigate('View Videos')}
           data={data}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-
         />
-
       }
-
       <Button title="Add New Video" onPress={selectVideo} style={styles.button} />
     </View>
   );
