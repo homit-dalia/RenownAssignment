@@ -65,7 +65,7 @@ const ListVideos = ({ navigation }) => {
       setInputFilePath(videoAsset.path)
 
       setName(getFileNameFromPath(videoAsset.path) + "_compressed")
-      output_path = `${RNFS.CachesDirectoryPath}/${name}__.mp4`
+      output_path = `${RNFS.CachesDirectoryPath}/_${name}__.mp4`
 
       // output_path = require(output_path)
 
