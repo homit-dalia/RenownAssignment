@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Button, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import ImagePicker from 'react-native-image-crop-picker';
 import { FFmpegKit, ReturnCode, FFprobeKit } from 'ffmpeg-kit-react-native';
+import Spinner from 'react-native-loading-spinner-overlay';
+
 
 var RNFS = require("react-native-fs");
 
@@ -38,12 +40,14 @@ const ListVideos = ({ navigation }) => {
   const [data, setData] = useState([]);
   const [name, setName] = useState("");
   const [compressed_video_uri, setCompressedVideoUri] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => { // use effect hook to compress video. setOutputFilePath is not instantenoues, so we need to wait for it to be set before compressing video
     if (compressed_video_uri != "") { // if output file path is not empty, compress video
       compressVideo()
     }
   }, [compressed_video_uri]);
+
 
   const addNewVideo = (name, uri) => {
     const newId = (data.length + 1).toString();
@@ -65,7 +69,7 @@ const ListVideos = ({ navigation }) => {
       setInputFilePath(videoAsset.path)
 
       setName(getFileNameFromPath(videoAsset.path) + "_compressed")
-      output_path = `${RNFS.CachesDirectoryPath}/_${name}__.mp4`
+      output_path = `${RNFS.CachesDirectoryPath}/_${name}_____.mp4`
 
       // output_path = require(output_path)
 
@@ -76,7 +80,11 @@ const ListVideos = ({ navigation }) => {
 
       setOutputFilePath(output_path)
 
+      setIsLoading(true)
+
       setCompressedVideoUri(`file://${output_path}`)
+
+
 
       console.log("Name")
       console.log(name)
@@ -101,9 +109,8 @@ const ListVideos = ({ navigation }) => {
         if (ReturnCode.isSuccess(returnCode)) {
           console.log("Successfully compressed video")
           console.log(session)
-
           addNewVideo(name, compressed_video_uri)
-
+          setIsLoading(false)
           // SUCCESS
 
         } else if (ReturnCode.isCancel(returnCode)) {
@@ -112,14 +119,18 @@ const ListVideos = ({ navigation }) => {
 
         } else {
           console.log("Compression failed")
+          Alert.alert('Compression failed', 'Please try again')
+          setIsLoading(false)
           // ERROR
-
         }
+
 
       }
       )
 
       setOutputFilePath("")
+
+      setCompressedVideoUri("")
     }
     catch (error) {
       console.log(error)
@@ -157,7 +168,16 @@ const ListVideos = ({ navigation }) => {
           keyExtractor={item => item.id}
         />
       }
+      {/* <ActivityIndicator size="large" color="#0000ff" animating={isLoading} /> */}
+      {/* Tried using ActivityIndicator but it was not working, so I used Spinner instead.
+      Once I implemented and tested the code for spinner, ActivityIndicator started working. But I decided to keep spinner as it looks better. */}
+      <Spinner
+          visible={isLoading}
+          textContent={'Loading...'}
+          textStyle={styles.spinnerTextStyle}
+        />
       <Button title="Add New Video" onPress={selectVideo} style={styles.button} />
+
     </View>
   );
 };
